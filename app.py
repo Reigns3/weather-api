@@ -7,36 +7,61 @@ import logging
 from datetime import datetime, timedelta
 import os
 import requests
-import gdown
 
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-MODEL_FILE_ID = "1ftr8CysyjDUgUvsr2JmEV7K9TEiAQjKa"
-MODEL_URL = f"https://drive.google.com/uc?id={MODEL_FILE_ID}"
+# GitHub raw URLs for LFS files (replace with actual URLs) or Google Drive URL
+MODEL_URL = "https://drive.google.com/uc?id=1ftr8CysyjDUgUvsr2JmEV7K9TEiAQjKa"  # Use your Google Drive URL
+TEST_DATA_URL = "https://media.githubusercontent.com/media/Reigns3/weather-api/main/data/X_test_small.npy"
+SCALER_URL = "https://media.githubusercontent.com/media/Reigns3/weather-api/main/data/scaler.pkl"
+
 MODEL_PATH = "models/convlstm_final_v4.h5"
+TEST_DATA_PATH = "data/X_test_small.npy"
+SCALER_PATH = "data/scaler.pkl"
+
+def download_file(url, destination):
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(destination) or ".", exist_ok=True)
+    if not os.path.exists(destination):
+        logger.info(f"Downloading {url} to {destination}...")
+        if "drive.google.com" in url:
+            import gdown
+            gdown.download(url, destination, quiet=False)
+        else:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            with open(destination, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        logger.info(f"Downloaded {destination}")
+    else:
+        logger.info(f"File {destination} already exists, skipping download.")
 
 try:
-    logger.info("Checking for model file...")
-    if not os.path.exists(MODEL_PATH):
-            logger.info("Model not found locally, downloading from Google Drive...")
-            gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-    else:
-            logger.info("Model found locally, skipping download.")
+    logger.info("Downloading required files...")
+    download_file(MODEL_URL, MODEL_PATH)
+    download_file(TEST_DATA_URL, TEST_DATA_PATH)
+    download_file(SCALER_URL, SCALER_PATH)
 
     logger.info("Loading model...")
     model = tf.keras.models.load_model(
         MODEL_PATH, custom_objects={'mse': tf.keras.losses.MeanSquaredError()}
     )
+
     logger.info("Loading scaler...")
-    scaler = joblib.load('data/scaler.pkl')
+    scaler = joblib.load(SCALER_PATH)
+
     logger.info("Loading dataset...")
     ds = xr.open_dataset('Dataset/final_weather_data.nc')
+
     logger.info("Loading test data...")
-    X_test = np.load('data/X_test_small.npy')  # (318, 24, 11, 33, 9)
+    X_test = np.load(TEST_DATA_PATH)
     logger.info(f"X_test shape: {X_test.shape}")
+
 except Exception as e:
     logger.error(f"Failed to load resources: {e}")
     raise
