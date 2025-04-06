@@ -5,17 +5,30 @@ import joblib
 import xarray as xr
 import logging
 from datetime import datetime, timedelta
+import os
+import requests
+import gdown
 
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+MODEL_FILE_ID = "1ftr8CysyjDUgUvsr2JmEV7K9TEiAQjKa"
+MODEL_URL = f"https://drive.google.com/uc?id={MODEL_FILE_ID}"
+MODEL_PATH = "models/convlstm_final_v4.h5"
+
 try:
+    logger.info("Checking for model file...")
+    if not os.path.exists(MODEL_PATH):
+            logger.info("Model not found locally, downloading from Google Drive...")
+            gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+    else:
+            logger.info("Model found locally, skipping download.")
+
     logger.info("Loading model...")
     model = tf.keras.models.load_model(
-        'models/convlstm_final_v4.h5',
-        custom_objects={'mse': tf.keras.losses.MeanSquaredError()}
+        MODEL_PATH, custom_objects={'mse': tf.keras.losses.MeanSquaredError()}
     )
     logger.info("Loading scaler...")
     scaler = joblib.load('data/scaler.pkl')
