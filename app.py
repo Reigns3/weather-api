@@ -13,10 +13,10 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# GitHub raw URLs for LFS files (replace with actual URLs) or Google Drive URL
+# GitHub raw URLs for files or Google Drive URL in case they don't exist
 MODEL_URL = "https://drive.google.com/uc?id=1ftr8CysyjDUgUvsr2JmEV7K9TEiAQjKa"  # Use your Google Drive URL
-TEST_DATA_URL = "https://media.githubusercontent.com/media/Reigns3/weather-api/main/data/X_test_small.npy"
-SCALER_URL = "https://media.githubusercontent.com/media/Reigns3/weather-api/main/data/scaler.pkl"
+TEST_DATA_URL = "https://raw.githubusercontent.com/Reigns3/weather-api/main/data/X_test_small.npy"
+SCALER_URL = "https://raw.githubusercontent.com/Reigns3/weather-api/main/data/scaler.pkl"
 
 MODEL_PATH = "models/convlstm_final_v4.h5"
 TEST_DATA_PATH = "data/X_test_small.npy"
@@ -105,8 +105,9 @@ def get_weather():
             except ValueError:
                 return jsonify({'error': 'Invalid date/time format, use YYYY-MM-DD HH:MM'}), 400
 
+        logger.debug(f"Using sequence index: {seq_idx}")
         recent_input = X_test[seq_idx:seq_idx+1]
-        logger.debug(f"Input shape: {recent_input.shape}, seq_idx: {seq_idx}")
+        logger.debug(f"Input shape: {recent_input.shape}")
 
         y_pred = model.predict(recent_input)
         logger.debug(f"Prediction shape: {y_pred.shape}")
@@ -158,8 +159,8 @@ def get_weather():
         return jsonify(weather_data)
 
     except Exception as e:
-        logger.error(f"Error in get_weather: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error in get_weather: {str(e)}", exc_info=True)
+        return jsonify({'error': f"Internal server error: {str(e)}"}), 500
 
 def get_wind_direction(u, v):
     angle = np.degrees(np.arctan2(v, u)) % 360
