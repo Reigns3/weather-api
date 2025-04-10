@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Add this import
 import numpy as np
 import tensorflow as tf
 import joblib
@@ -9,6 +10,7 @@ import os
 import requests
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -169,4 +171,5 @@ def get_wind_direction(u, v):
     return directions[idx]
 
 if __name__ == '__main__':
+    port = int(os.getenv("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=5000)
